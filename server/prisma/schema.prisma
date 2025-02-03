@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  username      String    @unique
+  email         String    @unique
+  passwordHash  String
+  createdAt     DateTime  @default(now())
+  lastLogin     DateTime  @updatedAt
+  
+  // Relations
+  hostedRooms   Room[]    @relation("RoomHost")
+  participation RoomParticipant[]
+  queueItems    QueueItem[]
+  preferences   UserPreference?
+}
+
+model Room {
+  id          String    @id @default(uuid())
+  name        String
+  hostId      String
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  lastActive  DateTime  @updatedAt
+  
+  // Relations
+  host        User      @relation("RoomHost", fields: [hostId], references: [id])
+  participants RoomParticipant[]
+  queueItems   QueueItem[]
+}
+
+model RoomParticipant {
+  id        String    @id @default(uuid())
+  roomId    String
+  userId    String
+  role      Role      @default(VIEWER)
+  joinedAt  DateTime  @default(now())
+  
+  // Relations
+  room      Room      @relation(fields: [roomId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+}
+
+model QueueItem {
+  id              String    @id @default(uuid())
+  roomId          String
+  youtubeVideoId  String
+  title           String
+  addedById       String
+  position        Int
+  status          QueueStatus @default(PENDING)
+  addedAt         DateTime  @default(now())
+  
+  // Relations
+  room            Room      @relation(fields: [roomId], references: [id])
+  addedBy         User      @relation(fields: [addedById], references: [id])
+}
+
+model UserPreference {
+  userId              String    @id
+  theme               Theme     @default(LIGHT)
+  volumePreference    Int       @default(50)
+  accessibilitySettings Json    @default("{}")
+  
+  // Relations
+  user                User      @relation(fields: [userId], references: [id])
+}
+
+enum Role {
+  HOST
+  CONTROLLER
+  VIEWER
+}
+
+enum QueueStatus {
+  PENDING
+  PLAYING
+  COMPLETED
+}
+
+enum Theme {
+  LIGHT
+  DARK
+} 
