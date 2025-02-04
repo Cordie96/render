@@ -1,30 +1,30 @@
 import { notifications } from '@mantine/notifications';
-import { IconCheck, IconX } from '@tabler/icons-react';
 
 export const notificationService = {
-  success: (message: string, title = 'Success') => {
+  success: (message: string) => {
     notifications.show({
-      title,
+      title: 'Success',
       message,
       color: 'green',
-      icon: <IconCheck size={16} />,
+      autoClose: 3000,
     });
   },
 
-  error: (message: string, title = 'Error') => {
+  error: (message: string) => {
     notifications.show({
-      title,
+      title: 'Error',
       message,
       color: 'red',
-      icon: <IconX size={16} />,
+      autoClose: 5000,
     });
   },
 
-  info: (message: string, title = 'Info') => {
+  warning: (message: string) => {
     notifications.show({
-      title,
+      title: 'Warning',
       message,
-      color: 'blue',
+      color: 'yellow',
+      autoClose: 4000,
     });
   },
 };

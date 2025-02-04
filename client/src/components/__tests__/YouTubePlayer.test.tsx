@@ -1,60 +1,59 @@
 import { render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
-import YouTubePlayer from '../YouTubePlayer';
+import YouTubePlayer from '../player/YouTubePlayer';
 
-// Mock YouTube component
-vi.mock('react-youtube', () => ({
-  default: vi.fn(({ onStateChange, onEnd, onReady }) => {
-    return (
-      <div data-testid="youtube-player">
-        <button onClick={() => onStateChange({ data: 1 })}>Play</button>
-        <button onClick={() => onStateChange({ data: 2 })}>Pause</button>
-        <button onClick={onEnd}>End</button>
-        <button onClick={() => onReady({ target: { loadVideoById: vi.fn() } })}>Ready</button>
-      </div>
-    );
-  }),
-}));
+// Mock YouTube iframe API
+const mockYT = {
+  Player: vi.fn(() => ({
+    loadVideoById: vi.fn(),
+    playVideo: vi.fn(),
+    pauseVideo: vi.fn(),
+    seekTo: vi.fn(),
+    getPlayerState: vi.fn(),
+    getCurrentTime: vi.fn(),
+    getDuration: vi.fn(),
+  })),
+};
+
+global.YT = mockYT;
 
 describe('YouTubePlayer', () => {
-  it('renders placeholder when no video is provided', () => {
-    render(<YouTubePlayer />);
-    expect(screen.getByText('No video selected')).toBeInTheDocument();
+  const defaultProps = {
+    videoId: 'test123',
+    onStateChange: vi.fn(),
+    onReady: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it('renders YouTube player when video is provided', () => {
-    render(<YouTubePlayer videoId="test-video-id" />);
-    expect(screen.getByTestId('youtube-player')).toBeInTheDocument();
+  it('renders loading state', () => {
+    render(<YouTubePlayer {...defaultProps} loading={true} />);
+    
+    expect(screen.getByTestId('youtube-loading')).toBeInTheDocument();
   });
 
-  it('calls onStateChange when player state changes', () => {
-    const onStateChange = vi.fn();
-    render(<YouTubePlayer videoId="test-video-id" onStateChange={onStateChange} />);
-
-    screen.getByText('Play').click();
-    expect(onStateChange).toHaveBeenCalledWith(1);
-
-    screen.getByText('Pause').click();
-    expect(onStateChange).toHaveBeenCalledWith(2);
+  it('renders player with correct video ID', () => {
+    render(<YouTubePlayer {...defaultProps} />);
+    
+    const iframe = screen.getByTitle('YouTube video player');
+    expect(iframe).toHaveAttribute('src', expect.stringContaining(defaultProps.videoId));
   });
 
-  it('calls onEnd when video ends', () => {
-    const onEnd = vi.fn();
-    render(<YouTubePlayer videoId="test-video-id" onEnd={onEnd} />);
-
-    screen.getByText('End').click();
-    expect(onEnd).toHaveBeenCalled();
+  it('updates video when videoId changes', () => {
+    const { rerender } = render(<YouTubePlayer {...defaultProps} />);
+    
+    rerender(<YouTubePlayer {...defaultProps} videoId="newVideo123" />);
+    
+    const iframe = screen.getByTitle('YouTube video player');
+    expect(iframe).toHaveAttribute('src', expect.stringContaining('newVideo123'));
   });
 
-  it('loads new video when videoId changes', () => {
-    const { rerender } = render(<YouTubePlayer videoId="video-1" />);
-    const loadVideoById = vi.fn();
-
-    // Simulate player ready
-    screen.getByText('Ready').click();
-
-    // Change video ID
-    rerender(<YouTubePlayer videoId="video-2" />);
-    expect(loadVideoById).toHaveBeenCalledWith('video-2');
+  it('maintains aspect ratio', () => {
+    render(<YouTubePlayer {...defaultProps} />);
+    
+    const container = screen.getByTestId('youtube-container');
+    expect(container).toHaveStyle({ aspectRatio: '16/9' });
   });
 }); 

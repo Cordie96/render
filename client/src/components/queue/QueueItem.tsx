@@ -1,4 +1,4 @@
-import { Card, Group, Text, ActionIcon, Badge } from '@mantine/core';
+import { Card, Group, Text, ActionIcon, Badge, useMantineTheme } from '@mantine/core';
 import { IconGripVertical, IconTrash } from '@tabler/icons-react';
 import { QueueItem as QueueItemType } from '../../types';
 
@@ -17,31 +17,52 @@ export default function QueueItem({
   dragHandleProps,
   onRemove,
 }: QueueItemProps) {
+  const theme = useMantineTheme();
+
   return (
-    <Card p="sm" withBorder>
+    <Card 
+      p="sm"
+      radius="md"
+      style={{
+        backgroundColor: isPlaying 
+          ? theme.fn.rgba(theme.colors.blue[theme.colorScheme === 'dark' ? 9 : 0], 0.2)
+          : theme.colorScheme === 'dark' 
+            ? theme.colors.dark[6] 
+            : theme.white,
+      }}
+    >
       <Group position="apart">
-        {isDraggable && (
-          <ActionIcon {...dragHandleProps}>
-            <IconGripVertical size={16} />
-          </ActionIcon>
-        )}
-        <div style={{ flex: 1 }}>
-          <Group position="apart">
-            <Text size="sm" weight={500} lineClamp={1}>
-              {item.title}
-            </Text>
+        <Group>
+          {isDraggable && (
+            <ActionIcon {...dragHandleProps} sx={{ cursor: 'grab' }}>
+              <IconGripVertical size={16} />
+            </ActionIcon>
+          )}
+          <div>
+            <Text weight={500}>{item.title}</Text>
             {isPlaying && (
-              <Badge color="blue" size="sm">
+              <Badge 
+                variant="filled" 
+                color={theme.primaryColor}
+                size="sm"
+              >
                 Now Playing
               </Badge>
             )}
-          </Group>
-          <Text size="xs" color="dimmed">
-            Added by {item.addedBy}
-          </Text>
-        </div>
+          </div>
+        </Group>
+
         {onRemove && (
-          <ActionIcon color="red" variant="light" onClick={onRemove}>
+          <ActionIcon 
+            color="red" 
+            variant="light" 
+            onClick={onRemove}
+            sx={{
+              '&:hover': {
+                backgroundColor: theme.fn.rgba(theme.colors.red[9], 0.15),
+              },
+            }}
+          >
             <IconTrash size={16} />
           </ActionIcon>
         )}

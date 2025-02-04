@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { vi } from 'vitest';
 import QueueList from '../QueueList';
+import { QueueItem } from '../../types';
 
 const mockQueue = [
   {
@@ -22,6 +23,25 @@ const mockQueue = [
 ];
 
 describe('QueueList', () => {
+  const mockItems: QueueItem[] = [
+    {
+      id: '1',
+      youtubeVideoId: 'video1',
+      title: 'First Song',
+      addedBy: 'User 1',
+      addedById: 'user1',
+      addedAt: new Date().toISOString(),
+    },
+    {
+      id: '2',
+      youtubeVideoId: 'video2',
+      title: 'Second Song',
+      addedBy: 'User 2',
+      addedById: 'user2',
+      addedAt: new Date().toISOString(),
+    },
+  ];
+
   it('renders queue items correctly', () => {
     render(
       <QueueList
@@ -99,5 +119,33 @@ describe('QueueList', () => {
     );
 
     expect(screen.queryByTestId('drag-handle')).not.toBeInTheDocument();
+  });
+
+  it('renders queue items correctly', () => {
+    render(<QueueList items={mockItems} />);
+
+    expect(screen.getByText('First Song')).toBeInTheDocument();
+    expect(screen.getByText('Second Song')).toBeInTheDocument();
+    expect(screen.getByText('User 1')).toBeInTheDocument();
+    expect(screen.getByText('User 2')).toBeInTheDocument();
+  });
+
+  it('shows empty state when no items', () => {
+    render(<QueueList items={[]} />);
+
+    expect(screen.getByText(/queue is empty/i)).toBeInTheDocument();
+  });
+
+  it('highlights current item', () => {
+    render(<QueueList items={mockItems} currentItem={mockItems[0]} />);
+
+    const firstItem = screen.getByText('First Song').closest('[data-current="true"]');
+    expect(firstItem).toBeInTheDocument();
+  });
+
+  it('shows loading state', () => {
+    render(<QueueList items={[]} loading={true} />);
+
+    expect(screen.getByTestId('queue-loading')).toBeInTheDocument();
   });
 }); 

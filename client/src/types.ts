@@ -5,6 +5,10 @@ export interface Room {
   hostName: string;
   isActive: boolean;
   createdAt: string;
+  settings?: {
+    allowGuestControl: boolean;
+    autoPlay: boolean;
+  };
 }
 
 export interface QueueItem {

@@ -1,0 +1,162 @@
+{
+  "title": "Worker & Queue Metrics",
+  "uid": "worker-metrics",
+  "panels": [
+    {
+      "title": "Queue Length",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "youtube_party_queue_length",
+          "legendFormat": "Queue Items"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": null, "color": "green" },
+              { "value": 50, "color": "yellow" },
+              { "value": 100, "color": "red" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Processing Time",
+      "type": "heatmap",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "rate(youtube_party_queue_processing_seconds_bucket[5m])"
+        }
+      ],
+      "options": {
+        "calculate": true,
+        "calculation": "95th"
+      }
+    },
+    {
+      "title": "Active Workers",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "youtube_party_active_workers"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": null, "color": "red" },
+              { "value": 1, "color": "green" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Error Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 6, "y": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "rate(youtube_party_queue_errors_total[5m])",
+          "legendFormat": "{{type}}"
+        }
+      ]
+    },
+    {
+      "title": "Job Retries",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "rate(youtube_party_job_retries_total[5m])",
+          "legendFormat": "{{jobType}}"
+        }
+      ]
+    },
+    {
+      "title": "Queue Processing Rate",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "rate(youtube_party_queue_processing_seconds_count[1m])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 10,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": null, "color": "red" },
+              { "value": 1, "color": "yellow" },
+              { "value": 5, "color": "green" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Worker Coordination Overview",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 24 },
+      "collapsed": false
+    },
+    {
+      "title": "Worker Status Distribution",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 25 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum by (status) (youtube_party_worker_coordination_info)",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    },
+    {
+      "title": "Worker Load Balance",
+      "type": "bargauge",
+      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 25 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "youtube_party_worker_load",
+          "legendFormat": "{{worker_id}}"
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient"
+      }
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 33,
+  "style": "dark",
+  "tags": ["worker", "queue", "monitoring"],
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+  }
+} 

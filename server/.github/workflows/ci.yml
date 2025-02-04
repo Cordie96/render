@@ -1,0 +1,97 @@
+name: Server CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'server/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'server/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: youtube_party_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:6
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Generate Prisma Client
+        working-directory: server
+        run: npx prisma generate
+
+      - name: Run migrations
+        working-directory: server
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/youtube_party_test
+
+      - name: Run tests
+        working-directory: server
+        run: npm run test:coverage
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/youtube_party_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test_secret
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          directory: server/coverage
+
+      - name: Install k6
+        run: |
+          curl -L https://github.com/grafana/k6/releases/download/v0.42.0/k6-v0.42.0-linux-amd64.tar.gz -o k6.tar.gz
+          tar -xzf k6.tar.gz
+          sudo cp k6-v0.42.0-linux-amd64/k6 /usr/local/bin
+
+      - name: Run load tests
+        working-directory: server
+        run: |
+          npm run test:load:cloud
+          npm run test:load:queue:cloud
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/youtube_party_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test_secret
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+          K6_CLOUD_PROJECT_ID: ${{ secrets.K6_CLOUD_PROJECT_ID }} 

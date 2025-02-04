@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Install dependencies
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
 # Copy source code
 COPY . .
@@ -16,7 +16,7 @@ RUN npm run build
 # Production stage
 FROM nginx:alpine
 
-# Copy build files
+# Copy built assets from build stage
 COPY --from=build /app/dist /usr/share/nginx/html
 
 # Copy nginx configuration

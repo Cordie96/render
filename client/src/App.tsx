@@ -12,11 +12,22 @@ import RoomScreen from './screens/RoomScreen';
 import RemoteScreen from './screens/RemoteScreen';
 import RoomList from './components/RoomList';
 import RoomCreation from './screens/RoomCreation';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { useTheme } from './contexts/ThemeContext';
 
-export default function App() {
+function AppContent() {
+  const { theme } = useTheme();
+  
   return (
     <ErrorBoundary>
-      <MantineProvider withGlobalStyles withNormalizeCSS>
+      <MantineProvider 
+        theme={{
+          ...theme,
+          colorScheme: theme,
+        }} 
+        withGlobalStyles 
+        withNormalizeCSS
+      >
         <Notifications position="top-right" />
         <Router>
           <AuthProvider>
@@ -64,5 +75,13 @@ export default function App() {
         </Router>
       </MantineProvider>
     </ErrorBoundary>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 } 

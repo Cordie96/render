@@ -1,8 +1,7 @@
-import { Container, Paper, Title, TextInput, PasswordInput, Button, Stack, Text, Anchor } from '@mantine/core';
-import { useForm } from '@mantine/form';
-import { Link } from 'react-router-dom';
+import { Container, Paper, Title, Stack, useMantineTheme } from '@mantine/core';
 import { useAuth } from '../contexts/AuthContext';
 import { useFormSubmit } from '../hooks/useFormSubmit';
+import AuthForm from '../components/auth/AuthForm';
 import ErrorAlert from '../components/ErrorAlert';
 
 interface LoginFormValues {
@@ -11,64 +10,35 @@ interface LoginFormValues {
 }
 
 export default function LoginScreen() {
+  const theme = useMantineTheme();
   const { login } = useAuth();
-  const { loading, error, handleSubmit } = useFormSubmit<LoginFormValues>({
-    onSubmit: async (values) => {
-      await login(values.email, values.password);
-    },
-  });
 
-  const form = useForm<LoginFormValues>({
-    initialValues: {
-      email: '',
-      password: '',
-    },
-    validate: {
-      email: (value) => (!value ? 'Email is required' : null),
-      password: (value) => (!value ? 'Password is required' : null),
+  const { loading, error, handleSubmit } = useFormSubmit({
+    onSubmit: async (values: LoginFormValues) => {
+      await login(values.email, values.password);
     },
   });
 
   return (
     <Container size="xs" py="xl">
-      <Paper radius="md" p="xl" withBorder>
+      <Paper 
+        radius="md" 
+        p="xl"
+        style={{
+          backgroundColor: theme.colorScheme === 'dark' ? theme.colors.dark[8] : theme.white,
+        }}
+      >
         <Stack spacing="lg">
-          <Title order={2} align="center">
-            Welcome Back
-          </Title>
+          <Title order={2} align="center">Welcome back</Title>
 
           {error && <ErrorAlert error={error} />}
 
-          <form onSubmit={form.onSubmit(handleSubmit)}>
-            <Stack spacing="md">
-              <TextInput
-                label="Email"
-                placeholder="your@email.com"
-                required
-                {...form.getInputProps('email')}
-                disabled={loading}
-              />
-
-              <PasswordInput
-                label="Password"
-                placeholder="Your password"
-                required
-                {...form.getInputProps('password')}
-                disabled={loading}
-              />
-
-              <Button type="submit" loading={loading}>
-                Login
-              </Button>
-            </Stack>
-          </form>
-
-          <Text align="center" size="sm">
-            Don't have an account?{' '}
-            <Anchor component={Link} to="/register">
-              Register
-            </Anchor>
-          </Text>
+          <AuthForm
+            type="login"
+            onSubmit={handleSubmit}
+            loading={loading}
+            error={error}
+          />
         </Stack>
       </Paper>
     </Container>

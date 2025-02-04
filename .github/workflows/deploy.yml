@@ -1,0 +1,21 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Deploy to Render
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          curl -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_API_SERVICE }}/deploys" \
+            -H "accept: application/json" \
+            -H "authorization: Bearer $RENDER_API_KEY" 

@@ -1,35 +1,7 @@
 version: '3.8'
 
 services:
-  client:
-    build:
-      context: ./client
-      dockerfile: Dockerfile
-    ports:
-      - "80:80"
-    environment:
-      - NODE_ENV=production
-      - VITE_API_URL=http://api:3000/api
-      - VITE_WS_URL=http://api:3000
-    depends_on:
-      - api
-
-  api:
-    build:
-      context: ./server
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/partykaraoke
-      - JWT_SECRET=${JWT_SECRET}
-      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
-    depends_on:
-      db:
-        condition: service_healthy
-
-  db:
+  postgres:
     image: postgres:14-alpine
     ports:
       - "5432:5432"
@@ -41,9 +13,69 @@ services:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/partykaraoke
+      - REDIS_URL=redis://redis:6379
+      - PORT=3000
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    environment:
+      - NODE_ENV=production
+      - VITE_API_URL=http://api:3000
+      - VITE_WS_URL=ws://api:3000
+
+  worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    command: npm run worker
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/partykaraoke
+      - REDIS_URL=redis://redis:6379
+      - HEALTH_PORT=3001
+
 volumes:
-  postgres_data: 
+  postgres_data:
+  redis_data: 

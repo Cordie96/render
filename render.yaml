@@ -1,31 +1,300 @@
 services:
-  # Backend API service
-  - type: web
-    name: partykaraoke-api
-    env: node
-    buildCommand: cd server && npm install && npm run build
-    startCommand: cd server && npm start
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: partykaraoke-db
-          property: connectionString
-
-  # Frontend static site
-  - type: web
-    name: partykaraoke-web
-    env: static
-    buildCommand: cd client && npm install && npm run build
-    staticPublishPath: client/dist
+  # Frontend Web App
+  - type: static
+    name: youtube-party-client
+    buildCommand: |
+      cd client
+      npm ci
+      npm run build
+    publishDirectory: client/dist
     envVars:
       - key: VITE_API_URL
-        value: https://partykaraoke-api.onrender.com
+        value: https://youtube-party-api.onrender.com/api
       - key: VITE_WS_URL
-        value: https://partykaraoke-api.onrender.com
+        value: wss://youtube-party-api.onrender.com
+      - key: VITE_YOUTUBE_API_KEY
+        value: AIzaSyBYXzN79iHjv5nN9pWY6lvq6ST41HdGk0w
+      - key: VITE_SENTRY_DSN
+        value: de8b7ec7cd9d8c57a4d8a61cf772d76f
 
+# Backend API
+- type: web
+  name: youtube-party-api
+  env: node
+  buildCommand: cd server && npm install && npm run build
+  startCommand: cd server && npm start
+  envVars:
+    - key: DATABASE_URL
+      fromDatabase:
+        name: youtube-party-db
+        property: connectionString
+    - key: JWT_SECRET
+      generateValue: true
+    - key: PORT
+      value: 3000
+
+# Database services
 databases:
-  - name: partykaraoke-db
+  - name: youtube-party-db
     databaseName: partykaraoke
-    user: partykaraoke 
+    ipAllowList: []
+
+# Health check paths
+healthCheckPaths:
+  - path: /health
+    period: 30s
+    timeout: 5s
+    retries: 3
+    services:
+      - youtube-party-api
+      - youtube-party-grafana
+      - youtube-party-prometheus
+      - youtube-party-loki
+      - youtube-party-worker
+  - path: /metrics
+    period: 15s
+    timeout: 3s
+    retries: 5
+    services:
+      - youtube-party-api
+      - youtube-party-prometheus
+
+# CORS and security headers
+headers:
+  - path: /*
+    values:
+      X-Frame-Options: DENY
+      X-Content-Type-Options: nosniff
+      Referrer-Policy: strict-origin-when-cross-origin
+      Permissions-Policy: camera=(), microphone=(), geolocation=()
+      Content-Security-Policy: >-
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com;
+        style-src 'self' 'unsafe-inline';
+        img-src 'self' data: https:;
+        font-src 'self';
+        connect-src 'self' https://www.youtube.com wss: https:;
+        frame-src https://www.youtube.com;
+  - path: /metrics
+    values:
+      Access-Control-Allow-Origin: ${GRAFANA_URL}
+      Access-Control-Allow-Methods: GET
+      Access-Control-Allow-Headers: Authorization
+  - path: /loki/*
+    values:
+      Access-Control-Allow-Origin: ${GRAFANA_URL}
+      Access-Control-Allow-Methods: GET, POST
+      Access-Control-Allow-Headers: Authorization, Content-Type
+
+# Monitoring services
+- type: web
+  name: youtube-party-grafana
+  env: docker
+  dockerfilePath: ./monitoring/grafana/Dockerfile
+  healthCheckPath: /api/health
+  autoDeploy: true
+  scaling:
+    minInstances: 1
+    maxInstances: 2
+    targetMemoryPercent: 80
+    targetCPUPercent: 70
+  envVars:
+    - key: GF_SECURITY_ADMIN_PASSWORD
+      sync: false
+    - key: GF_AUTH_ANONYMOUS_ENABLED
+      value: "true"
+    - key: GF_AUTH_ANONYMOUS_ORG_ROLE
+      value: "Viewer"
+    - key: GF_SMTP_ENABLED
+      value: "true"
+    - key: GF_SMTP_HOST
+      sync: false
+    - key: GF_SMTP_USER
+      sync: false
+    - key: GF_SMTP_PASSWORD
+      sync: false
+    - key: GF_SERVER_ROOT_URL
+      fromService:
+        type: web
+        name: youtube-party-grafana
+        property: url
+    - key: GF_LOG_LEVEL
+      value: "info"
+    - key: GF_METRICS_ENABLED
+      value: "true"
+
+- type: web
+  name: youtube-party-prometheus
+  env: docker
+  dockerfilePath: ./monitoring/prometheus/Dockerfile
+  healthCheckPath: /-/healthy
+  autoDeploy: true
+  scaling:
+    minInstances: 1
+    maxInstances: 2
+    targetMemoryPercent: 75
+    targetCPUPercent: 75
+  disk:
+    name: prometheus-data
+    mountPath: /prometheus
+    sizeGB: 10
+    backup:
+      enabled: true
+      schedule: "0 0 * * *"  # Daily backup at midnight
+      retentionPeriod: "30d"
+  envVars:
+    - key: PROMETHEUS_RETENTION_TIME
+      value: "15d"
+    - key: PROMETHEUS_STORAGE_TSDB_RETENTION_SIZE
+      value: "5GB"
+    - key: PROMETHEUS_WAL_COMPRESSION
+      value: "true"
+    - key: PROMETHEUS_SCRAPE_INTERVAL
+      value: "15s"
+
+# Loki for log aggregation
+- type: web
+  name: youtube-party-loki
+  env: docker
+  dockerfilePath: ./monitoring/loki/Dockerfile
+  healthCheckPath: /ready
+  autoDeploy: true
+  scaling:
+    minInstances: 1
+    maxInstances: 3
+    targetMemoryPercent: 75
+    targetCPUPercent: 75
+  disk:
+    name: loki-data
+    mountPath: /loki
+    sizeGB: 10
+    backup:
+      enabled: true
+      schedule: "0 0 * * *"  # Daily backup at midnight
+      retentionPeriod: "30d"
+  envVars:
+    - key: LOKI_AUTH_ENABLED
+      value: "true"
+    - key: LOKI_SERVER_HTTP_LISTEN_PORT
+      value: "3100"
+    - key: LOKI_RULER_EVALUATION_INTERVAL
+      value: "1m"
+    - key: LOKI_LIMITS_RETENTION_PERIOD
+      value: "744h"  # 31 days
+
+# Add backup service for monitoring data
+- type: cron
+  name: monitoring-backup
+  schedule: "0 1 * * *"  # Daily at 1 AM
+  envVars:
+    - key: BACKUP_RETENTION_DAYS
+      value: "30"
+    - key: PROMETHEUS_DATA_DIR
+      value: "/prometheus"
+    - key: LOKI_DATA_DIR
+      value: "/loki"
+  disk:
+    name: backup-storage
+    mountPath: /backups
+    sizeGB: 20
+
+# Add monitoring-specific network policies
+networkPolicies:
+  - name: monitoring-internal
+    ingress:
+      - from:
+          - service: youtube-party-api
+          - service: youtube-party-grafana
+        ports:
+          - port: 9090
+            protocol: TCP
+          - port: 3100
+            protocol: TCP
+    egress:
+      - to:
+          - service: youtube-party-api
+        ports:
+          - port: 3000
+            protocol: TCP
+  - name: worker-metrics
+    ingress:
+      - from:
+          - service: youtube-party-prometheus
+        ports:
+          - port: 3001
+            protocol: TCP
+    egress:
+      - to:
+          - service: youtube-party-redis
+          - service: youtube-party-db
+        ports:
+          - port: 6379
+            protocol: TCP
+          - port: 5432
+            protocol: TCP
+
+# Background worker for queue processing
+- type: worker
+  name: youtube-party-worker
+  env: node
+  buildCommand: cd server && npm install && npm run build
+  startCommand: cd server && npm run worker
+  scaling:
+    minInstances: 1
+    maxInstances: 3
+    targetMemoryPercent: 75
+    targetCPUPercent: 75
+  envVars:
+    - key: DATABASE_URL
+      fromDatabase:
+        name: youtube-party-db
+        property: connectionString
+    - key: REDIS_URL
+      fromService:
+        type: redis
+        name: youtube-party-redis
+        property: connectionString
+    - key: METRICS_ENABLED
+      value: "true"
+    - key: PROMETHEUS_URL
+      fromService:
+        name: youtube-party-prometheus
+        type: web
+        property: url
+    - key: LOKI_URL
+      fromService:
+        name: youtube-party-loki
+        type: web
+        property: url
+    - key: HEALTH_PORT
+      value: "3001"
+    - key: PROMETHEUS_IPS
+      fromService:
+        name: youtube-party-prometheus
+        type: web
+        property: privateIp
+    - key: WORKER_AUTH_TOKEN
+      sync: false
+    - key: NODE_ENV
+      value: production
+    - key: LOG_LEVEL
+      value: info
+    - key: WORKER_MAX_RETRIES
+      value: "3"
+    - key: WORKER_BACKOFF_MS
+      value: "1000"
+    - key: WORKER_RECOVERY_MODE
+      value: "graceful"
+    - key: WORKER_ERROR_THRESHOLD
+      value: "10"
+    - key: WORKER_ALERT_EMAIL
+      sync: false
+  healthCheck:
+    httpGet:
+      path: /health
+      port: 3001
+    initialDelaySeconds: 10
+    periodSeconds: 30
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 3 

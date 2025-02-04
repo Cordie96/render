@@ -6,14 +6,14 @@ import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig({
   plugins: [react()],
   build: {
     outDir: 'dist',
     sourcemap: true,
     rollupOptions: {
       input: {
-        main: resolve('index.html'),
+        main: resolve(__dirname, 'index.html'),
       },
     },
   },
@@ -23,6 +23,7 @@ export default defineConfig(({ mode }) => ({
       '/api': {
         target: process.env.VITE_API_URL || 'http://localhost:3000',
         changeOrigin: true,
+        secure: false
       },
       '/socket.io': {
         target: process.env.VITE_WS_URL || 'http://localhost:3000',
@@ -31,4 +32,4 @@ export default defineConfig(({ mode }) => ({
       },
     },
   }
-})); 
+}); 

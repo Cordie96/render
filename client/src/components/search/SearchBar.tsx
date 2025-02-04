@@ -1,4 +1,4 @@
-import { TextInput, ActionIcon, Group } from '@mantine/core';
+import { TextInput, ActionIcon, Group, useMantineTheme } from '@mantine/core';
 import { IconSearch, IconX } from '@tabler/icons-react';
 import { useCallback } from 'react';
 
@@ -10,15 +10,12 @@ interface SearchBarProps {
 }
 
 export default function SearchBar({ value, onChange, onSearch, loading }: SearchBarProps) {
-  const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      if (value.trim()) {
-        onSearch();
-      }
-    },
-    [value, onSearch]
-  );
+  const theme = useMantineTheme();
+
+  const handleSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    onSearch();
+  }, [onSearch]);
 
   return (
     <form onSubmit={handleSubmit}>
@@ -27,24 +24,46 @@ export default function SearchBar({ value, onChange, onSearch, loading }: Search
           placeholder="Search for songs..."
           value={value}
           onChange={(e) => onChange(e.currentTarget.value)}
+          style={{ flex: 1 }}
           rightSection={
-            value ? (
-              <ActionIcon onClick={() => onChange('')}>
+            value && (
+              <ActionIcon 
+                onClick={() => onChange('')}
+                variant="subtle"
+                color="gray"
+                sx={{
+                  '&:hover': {
+                    backgroundColor: theme.colorScheme === 'dark' 
+                      ? theme.colors.dark[6] 
+                      : theme.colors.gray[1],
+                  },
+                }}
+              >
                 <IconX size={16} />
               </ActionIcon>
-            ) : undefined
+            )
           }
-          style={{ flex: 1 }}
-          disabled={loading}
+          styles={(theme) => ({
+            input: {
+              '&:focus': {
+                borderColor: theme.colors[theme.primaryColor][theme.colorScheme === 'dark' ? 8 : 5],
+              },
+            },
+          })}
         />
         <ActionIcon
           type="submit"
           variant="filled"
-          color="blue"
+          color={theme.primaryColor}
+          size={36}
           loading={loading}
           disabled={!value.trim()}
+          sx={{
+            borderTopLeftRadius: 0,
+            borderBottomLeftRadius: 0,
+          }}
         >
-          <IconSearch size={16} />
+          <IconSearch size={18} />
         </ActionIcon>
       </Group>
     </form>

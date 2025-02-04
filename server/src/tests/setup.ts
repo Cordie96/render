@@ -1,53 +1,76 @@
 import { PrismaClient } from '@prisma/client';
-import jwt from 'jsonwebtoken';
+import { createClient } from 'redis';
+import { beforeAll, afterAll, beforeEach } from 'vitest';
 
 const prisma = new PrismaClient();
+const redis = createClient({
+  url: process.env.REDIS_URL || 'redis://localhost:6379'
+});
 
 beforeAll(async () => {
-  // Clean up database before tests
+  // Connect to Redis
+  await redis.connect();
+  
+  // Clean up database
   await prisma.queueItem.deleteMany();
   await prisma.roomParticipant.deleteMany();
   await prisma.room.deleteMany();
   await prisma.user.deleteMany();
+  
+  // Clean up Redis
+  await redis.flushAll();
 });
 
 afterAll(async () => {
   await prisma.$disconnect();
+  await redis.quit();
 });
 
-export const createTestUser = async () => {
-  const user = await prisma.user.create({
+beforeEach(async () => {
+  // Clean up between tests
+  await prisma.queueItem.deleteMany();
+  await redis.flushAll();
+});
+
+// Test helpers
+export async function createTestUser() {
+  return prisma.user.create({
     data: {
-      username: 'testuser',
       email: 'test@example.com',
-      passwordHash: 'hashedpassword',
-    },
+      username: 'testuser',
+      password: 'hashedpassword'
+    }
   });
+}
 
-  const token = jwt.sign(
-    { id: user.id, email: user.email },
-    process.env.JWT_SECRET!
-  );
-
-  return { user, token };
-};
-
-export const createTestRoom = async (hostId: string) => {
+export async function createTestRoom(userId: string) {
   return prisma.room.create({
     data: {
       name: 'Test Room',
-      hostId,
+      hostId: userId,
       isActive: true,
       participants: {
         create: {
-          userId: hostId,
-          role: 'HOST',
-        },
-      },
+          userId,
+          role: 'HOST'
+        }
+      }
     },
     include: {
-      participants: true,
-      host: true,
-    },
+      participants: true
+    }
   });
-}; 
+}
+
+export async function createTestQueueItem(roomId: string, userId: string) {
+  return prisma.queueItem.create({
+    data: {
+      roomId,
+      youtubeVideoId: 'test123',
+      title: 'Test Video',
+      addedById: userId,
+      position: 0,
+      status: 'PENDING'
+    }
+  });
+} 

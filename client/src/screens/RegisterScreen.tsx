@@ -1,101 +1,45 @@
-import { Container, Paper, Title, TextInput, PasswordInput, Button, Stack, Text, Anchor } from '@mantine/core';
-import { useForm } from '@mantine/form';
-import { Link } from 'react-router-dom';
+import { Container, Paper, Title, Stack, useMantineTheme } from '@mantine/core';
 import { useAuth } from '../contexts/AuthContext';
 import { useFormSubmit } from '../hooks/useFormSubmit';
+import AuthForm from '../components/auth/AuthForm';
 import ErrorAlert from '../components/ErrorAlert';
 
 interface RegisterFormValues {
-  name: string;
+  username: string;
   email: string;
   password: string;
-  confirmPassword: string;
 }
 
 export default function RegisterScreen() {
+  const theme = useMantineTheme();
   const { register } = useAuth();
-  const { loading, error, handleSubmit } = useFormSubmit<RegisterFormValues>({
-    onSubmit: async (values) => {
-      await register(values.email, values.password, values.name);
-    },
-  });
 
-  const form = useForm<RegisterFormValues>({
-    initialValues: {
-      name: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-    },
-    validate: {
-      name: (value) => (!value ? 'Name is required' : null),
-      email: (value) => (!value ? 'Email is required' : null),
-      password: (value) => {
-        if (!value) return 'Password is required';
-        if (value.length < 6) return 'Password must be at least 6 characters';
-        return null;
-      },
-      confirmPassword: (value, values) =>
-        value !== values.password ? 'Passwords do not match' : null,
+  const { loading, error, handleSubmit } = useFormSubmit({
+    onSubmit: async (values: RegisterFormValues) => {
+      await register(values.username, values.email, values.password);
     },
   });
 
   return (
     <Container size="xs" py="xl">
-      <Paper radius="md" p="xl" withBorder>
+      <Paper 
+        radius="md" 
+        p="xl"
+        style={{
+          backgroundColor: theme.colorScheme === 'dark' ? theme.colors.dark[8] : theme.white,
+        }}
+      >
         <Stack spacing="lg">
-          <Title order={2} align="center">
-            Create Account
-          </Title>
+          <Title order={2} align="center">Create an account</Title>
 
           {error && <ErrorAlert error={error} />}
 
-          <form onSubmit={form.onSubmit(handleSubmit)}>
-            <Stack spacing="md">
-              <TextInput
-                label="Name"
-                placeholder="Your name"
-                required
-                {...form.getInputProps('name')}
-                disabled={loading}
-              />
-
-              <TextInput
-                label="Email"
-                placeholder="your@email.com"
-                required
-                {...form.getInputProps('email')}
-                disabled={loading}
-              />
-
-              <PasswordInput
-                label="Password"
-                placeholder="Create a password"
-                required
-                {...form.getInputProps('password')}
-                disabled={loading}
-              />
-
-              <PasswordInput
-                label="Confirm Password"
-                placeholder="Confirm your password"
-                required
-                {...form.getInputProps('confirmPassword')}
-                disabled={loading}
-              />
-
-              <Button type="submit" loading={loading}>
-                Register
-              </Button>
-            </Stack>
-          </form>
-
-          <Text align="center" size="sm">
-            Already have an account?{' '}
-            <Anchor component={Link} to="/login">
-              Login
-            </Anchor>
-          </Text>
+          <AuthForm
+            type="register"
+            onSubmit={handleSubmit}
+            loading={loading}
+            error={error}
+          />
         </Stack>
       </Paper>
     </Container>

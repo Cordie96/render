@@ -1,4 +1,4 @@
-import { Stack, Card, Group, Text, Button, Image, Skeleton } from '@mantine/core';
+import { Stack, Card, Group, Text, Button, Image, Skeleton, useMantineTheme } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
 import { YouTubeVideo } from '../../types';
 
@@ -9,11 +9,21 @@ interface SearchResultsProps {
 }
 
 export default function SearchResults({ results, onAdd, loading }: SearchResultsProps) {
+  const theme = useMantineTheme();
+
   if (loading) {
     return (
       <Stack spacing="md">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} height={80} radius="md" />
+        {[1, 2, 3].map((i) => (
+          <Card key={i} p="md" radius="md">
+            <Group>
+              <Skeleton height={90} width={120} radius="md" />
+              <Stack spacing="xs" style={{ flex: 1 }}>
+                <Skeleton height={20} radius="sm" width="70%" />
+                <Skeleton height={16} radius="sm" width="40%" />
+              </Stack>
+            </Group>
+          </Card>
         ))}
       </Stack>
     );
@@ -30,34 +40,46 @@ export default function SearchResults({ results, onAdd, loading }: SearchResults
   return (
     <Stack spacing="md">
       {results.map((video) => (
-        <Card key={video.id} p="sm" withBorder>
+        <Card 
+          key={video.id}
+          p="md"
+          radius="md"
+          className="card-hover"
+          style={{
+            backgroundColor: theme.colorScheme === 'dark' ? theme.colors.dark[8] : theme.white,
+          }}
+        >
           <Group>
             <Image
-              src={video.thumbnailUrl}
-              width={120}
-              height={68}
-              radius="sm"
+              src={video.thumbnail}
               alt={video.title}
+              width={120}
+              height={90}
+              radius="md"
+              withPlaceholder
             />
-            <div style={{ flex: 1 }}>
-              <Text size="sm" weight={500} lineClamp={2}>
+            <Stack spacing="xs" style={{ flex: 1 }}>
+              <Text weight={500} lineClamp={2}>
                 {video.title}
               </Text>
-              <Text size="xs" color="dimmed">
+              <Text size="sm" color="dimmed">
                 {video.channelTitle}
               </Text>
-              <Text size="xs" color="dimmed">
-                {video.duration}
-              </Text>
-            </div>
-            <Button
-              variant="light"
-              size="xs"
-              leftIcon={<IconPlus size={16} />}
-              onClick={() => onAdd(video)}
-            >
-              Add
-            </Button>
+              <Button
+                leftIcon={<IconPlus size={16} />}
+                variant="light"
+                size="sm"
+                onClick={() => onAdd(video)}
+                sx={{
+                  alignSelf: 'flex-start',
+                  '&:hover': {
+                    backgroundColor: theme.fn.rgba(theme.colors[theme.primaryColor][theme.colorScheme === 'dark' ? 9 : 1], 0.35),
+                  },
+                }}
+              >
+                Add to Queue
+              </Button>
+            </Stack>
           </Group>
         </Card>
       ))}

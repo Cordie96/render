@@ -19,7 +19,7 @@ export const roomService = {
     return data;
   },
 
-  updateSettings: async (roomId: string, settings: Partial<RoomSettings>) => {
+  updateSettings: async (roomId: string, settings: RoomSettings) => {
     const { data } = await api.patch<Room>(`/rooms/${roomId}/settings`, settings);
     cacheService.delete(`room:${roomId}`);
     return data;
